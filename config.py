@@ -17,6 +17,9 @@ DEFAULTS = {
     'CHECK_FOR_HIDDEN_GAMES': True,
     'SHOW_HIDDEN_GAMES': False,
     'STEAM_INSTALL_PATH': '',
+    'IMAGE_CACHE_DIR': 'data/images',
+    'FETCH_STORE_METADATA': True,
+    'FETCH_STEAM_REVIEWS': True,
 }
 
 
@@ -46,6 +49,9 @@ HLTB_CACHE_MAX_AGE_DAYS = getattr(_local, 'HLTB_CACHE_MAX_AGE_DAYS', DEFAULTS['H
 CHECK_FOR_HIDDEN_GAMES = getattr(_local, 'CHECK_FOR_HIDDEN_GAMES', DEFAULTS['CHECK_FOR_HIDDEN_GAMES'])
 SHOW_HIDDEN_GAMES = getattr(_local, 'SHOW_HIDDEN_GAMES', DEFAULTS['SHOW_HIDDEN_GAMES'])
 STEAM_INSTALL_PATH = getattr(_local, 'STEAM_INSTALL_PATH', DEFAULTS['STEAM_INSTALL_PATH'])
+IMAGE_CACHE_DIR = getattr(_local, 'IMAGE_CACHE_DIR', DEFAULTS['IMAGE_CACHE_DIR'])
+FETCH_STORE_METADATA = getattr(_local, 'FETCH_STORE_METADATA', DEFAULTS['FETCH_STORE_METADATA'])
+FETCH_STEAM_REVIEWS = getattr(_local, 'FETCH_STEAM_REVIEWS', DEFAULTS['FETCH_STEAM_REVIEWS'])
 
 
 def get_cache_dir():
@@ -53,3 +59,10 @@ def get_cache_dir():
     if not cache_path.is_absolute():
         cache_path = PROJECT_ROOT / cache_path
     return cache_path
+
+
+def get_image_cache_dir():
+    image_path = Path(IMAGE_CACHE_DIR)
+    if not image_path.is_absolute():
+        image_path = PROJECT_ROOT / image_path
+    return image_path

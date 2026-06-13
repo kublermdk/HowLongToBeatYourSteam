@@ -38,3 +38,12 @@ SHOW_HIDDEN_GAMES = False
 # -- Path to your Steam installation folder, e.g. C:/Program Files (x86)/Steam
 # -- Leave empty to auto-detect on Windows, Linux, and macOS.
 STEAM_INSTALL_PATH = ''
+
+# -- Local image cache for Steam header art
+IMAGE_CACHE_DIR = 'data/images'
+
+# -- Allow lazy fetch of Steam store descriptions/genres via API
+FETCH_STORE_METADATA = True
+
+# -- Fetch Steam user review summary (Very Positive, Mixed, etc.) for filtering
+FETCH_STEAM_REVIEWS = True

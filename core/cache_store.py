@@ -111,3 +111,15 @@ class LibraryCache:
 
     def count_cached_hltb(self, appids, max_age_days=0):
         return sum(1 for appid in appids if self.has_hltb(appid, max_age_days))
+
+    def has_steam_reviews(self, appid):
+        entry = self._data['games'].get(str(appid))
+        return entry is not None and entry.get('steam_reviews_fetched_at') is not None
+
+    def set_steam_reviews(self, appid, reviews_data):
+        entry = self._data['games'].setdefault(str(appid), {'appid': appid})
+        entry['steam_reviews'] = reviews_data or {}
+        entry['steam_reviews_fetched_at'] = int(time.time())
+
+    def count_cached_steam_reviews(self, appids):
+        return sum(1 for appid in appids if self.has_steam_reviews(appid))
