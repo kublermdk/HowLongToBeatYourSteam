@@ -3,12 +3,56 @@ main {
     justify-content: center;
     align-items: center;
     flex-direction: column;
+    padding-bottom: 40px;
+}
+
+.status-section {
+    margin-top: 40px;
+    width: min(1200px, 95vw);
+    text-align: center;
+    font-family: sans-serif;
+}
+
+#statusText {
+    font-size: 20px;
+    margin-bottom: 12px;
+}
+
+.status-note {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #555;
+}
+
+.status-note code {
+    font-size: 13px;
+}
+
+.playtime-cell {
+    cursor: default;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background: #ddd;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    width: 0;
+    height: 100%;
+    background: #111;
+    transition: width 0.2s ease;
 }
 
 table {
-    margin-top: 50px;
+    margin-top: 30px;
+    width: min(1200px, 95vw);
     font-family: sans-serif;
     font-size: large;
+    border-collapse: collapse;
 }
 
 th {
@@ -18,7 +62,6 @@ th {
 
 td {
     padding: 5px 7px;
-    
 }
 
 .center {
@@ -26,7 +69,7 @@ td {
 }
 
 .filters-section {
-    margin-top: 50px;
+    margin-top: 30px;
 }
 
 .sort-by {

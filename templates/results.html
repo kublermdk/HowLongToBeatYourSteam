@@ -19,103 +19,222 @@
 </head>
 <body>
     {% include 'header.html' %}
-    
+
     <main>
-        <div class="filters-section">
-            <div class="sort-by">
-                Sort by
+        <div class="status-section">
+            <p id="statusText">Loading your Steam library...</p>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
             </div>
+            <p class="status-note">Results are cached locally (see CACHE_DIR in config.local.py). Last played dates appear only when you use your own Steam API key on your own account.</p>
+        </div>
+
+        <div class="filters-section">
+            <div class="sort-by">Sort by</div>
             <button onclick="sortTable('GameName')">Name</button>
+            <button onclick="sortTable('Playtime')">Playtime</button>
+            <button onclick="sortTable('LastPlayed')">Last Played</button>
             <button onclick="sortTable('MainStory')">Main Story</button>
             <button onclick="sortTable('MainExtra')">Main + Extra</button>
             <button onclick="sortTable('Completionist')">Completionist</button>
         </div>
-    
+
         <table id="gamesTable">
             <thead>
                 <tr>
                     <th>Game Name</th>
                     <th>Game Type</th>
+                    <th>Your Playtime</th>
+                    <th>Last Played</th>
                     <th>Main Story</th>
                     <th>Main + Extra</th>
                     <th>Completionist</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for game in results %}
-                    <tr>
-                        <td>{{ game['GameName'] }}</td>
-                        <td class="center">{{ game['GameType'] }}</td>
-                        <td class="center">{{ game['MainStory'] }}</td>
-                        <td class="center">{{ game['MainExtra'] }}</td>
-                        <td class="center">{{ game['Completionist'] }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
+            <tbody id="gamesBody"></tbody>
         </table>
     </main>
 
     <script>
-        function sortTable(columnName) {
-            let table, rows, data, switching, i, shouldSwitch;
-            table = document.getElementById("gamesTable");
-            switching = true;
+        'use strict';
 
-            let sortMap = {
-                'GameName'      : 0,
-                'MainStory'     : 2,
-                'MainExtra'     : 3,
-                'Completionist' : 4
+        const steamId = {{ steam_id | tojson }};
+        const sortMap = {
+            GameName: 0,
+            GameType: 1,
+            Playtime: 2,
+            LastPlayed: 3,
+            MainStory: 4,
+            MainExtra: 5,
+            Completionist: 6,
+        };
+
+        let totalGames = 0;
+        let loadedGames = 0;
+        let cachedHltb = 0;
+        let pendingHltb = 0;
+        let lookedUpThisRun = 0;
+        let hiddenFiltered = 0;
+        let libraryTotal = 0;
+        let checkHiddenGames = false;
+        let currentSortColumn = null;
+        let currentSortOrder = 'asc';
+
+        const statusText = document.getElementById('statusText');
+        const progressFill = document.getElementById('progressFill');
+        const gamesBody = document.getElementById('gamesBody');
+
+        function hiddenStatusSuffix() {
+            if (!checkHiddenGames || hiddenFiltered === 0) {
+                return '';
             }
 
-            // Collect data from the table
-            data = [];
-            rows = table.rows;
-            for (i = 1; i < rows.length; i++) {
-                let rowData = {
-                    row: rows[i],
-                    value: rows[i].getElementsByTagName("TD")[sortMap[columnName]].innerText
-                };
-                
-                data.push(rowData);
-            }
-
-            // Determine the current sorting order
-            let sortOrder = "asc";
-            if (rows[0].getElementsByTagName("TH")[sortMap[columnName]].classList.contains("sorted-desc")) {
-                sortOrder = "asc";
-            } else if (rows[0].getElementsByTagName("TH")[sortMap[columnName]].classList.contains("sorted-asc")) {
-                sortOrder = "desc";
-            }
-
-            // Sort the data
-            data.sort((a, b) => {
-                var x = isNaN(a.value) ? a.value.toLowerCase() : parseInt(a.value);
-                var y = isNaN(b.value) ? b.value.toLowerCase() : parseInt(b.value);
-
-                // Change the sorting order if needed
-                if (sortOrder === "asc") {
-                    return x > y ? 1 : -1;
-                } else {
-                    return x < y ? 1 : -1;
-                }
-            });
-
-            // Update the table with sorted data
-            for (i = 0; i < data.length; i++) {
-                rows[i + 1].parentNode.insertBefore(data[i].row, rows[i + 1]);
-            }
-
-            // Remove existing sorting indicators
-            for (i = 0; i < rows[0].cells.length; i++) {
-                rows[0].cells[i].classList.remove("sorted-asc");
-                rows[0].cells[i].classList.remove("sorted-desc");
-            }
-
-            // Add sorting indicator to the selected column
-            rows[0].getElementsByTagName("TH")[sortMap[columnName]].classList.add("sorted-" + sortOrder);
+            return ` (${hiddenFiltered} hidden excluded from ${libraryTotal})`;
         }
 
+        function updateStatus() {
+            if (totalGames === 0) {
+                statusText.textContent = 'Loading your Steam library...';
+                progressFill.style.width = '0%';
+                return;
+            }
+
+            const hiddenSuffix = hiddenStatusSuffix();
+
+            if (pendingHltb === 0) {
+                statusText.textContent = `Found ${totalGames} games${hiddenSuffix}. Loaded ${loadedGames} of ${totalGames} from cache...`;
+            } else {
+                statusText.textContent = `Found ${totalGames} games${hiddenSuffix}. ${cachedHltb} cached, looking up ${lookedUpThisRun} of ${pendingHltb} on HowLongToBeat...`;
+            }
+            progressFill.style.width = `${Math.round((loadedGames / totalGames) * 100)}%`;
+        }
+
+        function appendGameRow(game, fromCache) {
+            const row = document.createElement('tr');
+            row.dataset.appid = game.AppId;
+            row.innerHTML = `
+                <td>${escapeHtml(game.GameName)}</td>
+                <td class="center">${escapeHtml(game.GameType)}</td>
+                <td class="center playtime-cell" data-appid="${game.AppId}" data-sort="${game.PlaytimeMinutes}" title="Playtime refresh will be available here later">${escapeHtml(game.Playtime)}</td>
+                <td class="center" data-sort="${game.LastPlayedTimestamp}">${escapeHtml(game.LastPlayed)}</td>
+                <td class="center">${escapeHtml(String(game.MainStory))}</td>
+                <td class="center">${escapeHtml(String(game.MainExtra))}</td>
+                <td class="center">${escapeHtml(String(game.Completionist))}</td>
+            `;
+            gamesBody.appendChild(row);
+
+            if (currentSortColumn) {
+                sortTable(currentSortColumn, true);
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function sortTable(columnName, preserveOrder = false) {
+            const table = document.getElementById('gamesTable');
+            const rows = Array.from(gamesBody.rows);
+            const columnIndex = sortMap[columnName];
+
+            let sortOrder = 'asc';
+            if (preserveOrder && currentSortColumn === columnName) {
+                sortOrder = currentSortOrder;
+            } else if (currentSortColumn === columnName && currentSortOrder === 'asc') {
+                sortOrder = 'desc';
+            }
+
+            rows.sort((rowA, rowB) => {
+                const cellA = rowA.cells[columnIndex];
+                const cellB = rowB.cells[columnIndex];
+                const sortValueA = cellA.dataset.sort ?? cellA.innerText;
+                const sortValueB = cellB.dataset.sort ?? cellB.innerText;
+                const numericA = Number(sortValueA);
+                const numericB = Number(sortValueB);
+                const bothNumeric = !Number.isNaN(numericA) && !Number.isNaN(numericB) && sortValueA !== '' && sortValueB !== '';
+
+                let comparison;
+                if (bothNumeric) {
+                    comparison = numericA - numericB;
+                } else {
+                    comparison = String(sortValueA).localeCompare(String(sortValueB), undefined, { sensitivity: 'base' });
+                }
+
+                return sortOrder === 'asc' ? comparison : -comparison;
+            });
+
+            rows.forEach((row) => gamesBody.appendChild(row));
+
+            Array.from(table.rows[0].cells).forEach((cell) => {
+                cell.classList.remove('sorted-asc', 'sorted-desc');
+            });
+            table.rows[0].cells[columnIndex].classList.add(`sorted-${sortOrder}`);
+
+            currentSortColumn = columnName;
+            currentSortOrder = sortOrder;
+        }
+
+        const source = new EventSource(`/results/${steamId}/stream`);
+
+        source.onmessage = (event) => {
+            const payload = JSON.parse(event.data);
+
+            if (payload.type === 'meta') {
+                totalGames = payload.total;
+                cachedHltb = payload.cached_hltb ?? 0;
+                pendingHltb = payload.pending_hltb ?? totalGames;
+                hiddenFiltered = payload.hidden_filtered ?? 0;
+                libraryTotal = payload.library_total ?? totalGames;
+                checkHiddenGames = payload.check_hidden_games ?? false;
+                updateStatus();
+                return;
+            }
+
+            if (payload.type === 'game') {
+                appendGameRow(payload.game, payload.from_cache);
+                loadedGames = payload.index;
+                if (!payload.from_cache) {
+                    lookedUpThisRun += 1;
+                }
+                updateStatus();
+                return;
+            }
+
+            if (payload.type === 'done') {
+                source.close();
+                const hiddenSuffix = hiddenStatusSuffix();
+
+                if (pendingHltb === 0) {
+                    statusText.textContent = `Done. ${totalGames} games loaded from cache${hiddenSuffix}.`;
+                } else if (lookedUpThisRun === 0) {
+                    statusText.textContent = `Done. ${totalGames} games loaded${hiddenSuffix}. All HowLongToBeat data came from cache.`;
+                } else {
+                    statusText.textContent = `Done. ${totalGames} games loaded${hiddenSuffix}. Looked up ${lookedUpThisRun} new games on HowLongToBeat; ${cachedHltb} were cached.`;
+                }
+                progressFill.style.width = '100%';
+                return;
+            }
+
+            if (payload.type === 'error') {
+                source.close();
+                statusText.textContent = payload.message;
+                progressFill.style.width = '0%';
+            }
+        };
+
+        source.onerror = () => {
+            if (source.readyState === EventSource.CLOSED) {
+                return;
+            }
+
+            source.close();
+            statusText.textContent = 'Connection lost while loading results. Refresh the page to try again.';
+        };
     </script>
 </body>
 </html>
