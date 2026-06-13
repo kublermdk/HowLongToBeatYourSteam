@@ -1,8 +1,15 @@
 # HowLongToBeatYourSteam
 
-A local backlog analyst for your Steam library. It combines your playtime with [HowLongToBeat](https://howlongtobeat.com/) estimates, then helps you filter down to games worth playing next.
+A local view for your Steam library. It combines your playtime with [HowLongToBeat](https://howlongtobeat.com/) estimates, then helps you filter down to games worth playing next.
 
 Built with **Flask** (API + cache) and **React + Tailwind + Radix UI** (frontend).
+
+This was initially created by [Andrii S](https://github.com/Selfemra/HowLongToBeatYourSteam.git) 
+
+It's been vibe coded in Cursor and updated by [Michael Kubler](https://github.com/kublermdk/HowLongToBeatYourSteam)
+
+There's now a lot of filters, imagery, caching and other quality of life improvements.
+It's helped me select my next games!
 
 ## What you get
 
@@ -103,3 +110,17 @@ Use the numeric ID from `https://steamcommunity.com/profiles/76561198…` or loo
 | `Missing config.local.py` | Copy from `config.local.example.py` |
 | No games returned | Public game library, valid Steam ID |
 | Hidden detection fails | Set `STEAM_INSTALL_PATH` or disable with `CHECK_FOR_HIDDEN_GAMES = False` |
+
+## Screenshots
+
+### Filters and table view
+
+![Filters and table view](docs/images/HLTBYS-Example-Filter-And-Table.webp)
+
+### Grid view
+
+![Grid view](docs/images/HLTBYS-Example-Grid.webp)
+
+### Game detail drawer
+
+![Game detail drawer — Deus Ex: Human Revolution](docs/images/HLTBYS-Example-DeusEx.webp)
